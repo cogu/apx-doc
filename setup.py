@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='apx',
-      version='0.1.0',
+      version='0.1.1',
       description='A framework for sending AUTOSAR signal data to non-AUTOSAR applications',
       long_description=readme(),
       classifiers=[

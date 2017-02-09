@@ -1,0 +1,7 @@
+.table-numbers {
+   font-family: "Consolas", "monospace";
+}
+
+table.center-align td {
+   text-align: center;
+}

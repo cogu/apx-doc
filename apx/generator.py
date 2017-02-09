@@ -1,6 +1,14 @@
 import apx.base
 import cfile as C
 
+def _genCommentHeader(comment):
+   lines = []  
+   lines.append(C.line('//////////////////////////////////////////////////////////////////////////////'))
+   lines.append(C.line('// %s'%comment))
+   lines.append(C.line('//////////////////////////////////////////////////////////////////////////////'))
+   return lines
+
+
 class SignalInfo:
    def __init__(self, offset, pack_len, func, dsg, operation, init_value=None):
       self.offset=offset
@@ -156,7 +164,7 @@ class NodeGenerator:
       indent-=indentStep
       return code,packLen
    
-   def writeHeaderFile(self, fp, signalInfo, guard):
+   def writeHeaderFile(self, fp, signalInfo, signalInfoMap, guard, node):
       #indent=0
       #indentStep=3
             
@@ -166,16 +174,29 @@ class NodeGenerator:
       headerFile.code.append(C.include('Rte_Type.h'))
       headerFile.code.append(C.include('apx_nodeData.h'))
       headerFile.code.append(C.blank(1))
+      headerFile.code.extend(_genCommentHeader('CONSTANTS'))
+      
+      shortDefines=[]
+      for port in node.requirePortList:
+         tmp = (['APX',self.name.upper(), 'OFFSET',port.name.upper()])
+         if self.name.upper().startswith('APX'):
+            del tmp[0]  
+         identifier = '_'.join(tmp)
+         signalInfoElem=signalInfoMap[port.name]
+         assert(signalInfoElem.operation == 'unpack')
+         id_len=len(identifier)
+         headerFile.code.append(C.define(identifier, str(signalInfoElem.offset).rjust(60-id_len)))
+         shortDefines.append(C.define('APX_OFFSET_'+port.name.upper(),identifier))
+      headerFile.code.append(C.blank(1))
+      if len(shortDefines)>0:
+         headerFile.code.extend(shortDefines)
+      headerFile.code.append(C.blank(1))
+      headerFile.code.extend(_genCommentHeader('FUNCTION PROTOTYPES'))      
       initFunc = C.function('%s_init'%self.name,'void')
-      nodeDataFunc = C.function('%s_getNodeData'%self.name,'apx_nodeData_t',pointer=True)      
+      nodeDataFunc = C.function('%s_getNodeData'%self.name,'apx_nodeData_t',pointer=True) 
       headerFile.code.append(C.statement(initFunc))
       headerFile.code.append(C.statement(nodeDataFunc))
-      headerFile.code.append(C.blank(1))
-      
-      #write function prototypes for write functions
-      headerFile.code.append(C.blank(1))
-      headerFile.code.append(C.linecomment('function prototypes'))
-      
+      headerFile.code.append(C.blank(1))      
       for elem in signalInfo:
          headerFile.code.append(C.statement(elem.func))
          
@@ -325,6 +346,7 @@ class NodeGenerator:
     
    def generate(self, node, header_fp, source_fp, name=None, includes=None):
       signalInfo=[]
+      signalInfoMap={}
       inPortDataLen=0
       outPortDataLen=0
       offset=0
@@ -340,7 +362,9 @@ class NodeGenerator:
          func.add_arg(C.variable('val',port.dsg.typename(node.typeList),pointer=is_pointer))         
          packLen=port.dsg.packLen(node.typeList)
          port.dsg.typeList= node.typeList
-         signalInfo.append(SignalInfo(offset,packLen,func,port.dsg,'unpack', 0)) #TODO: implement init value
+         tmp = SignalInfo(offset,packLen,func,port.dsg,'unpack', 0) #TODO: implement init value
+         signalInfo.append(tmp)
+         signalInfoMap[port.name]=tmp
          inPortDataLen+=packLen
          offset+=packLen
       #provide ports (out ports)
@@ -353,9 +377,11 @@ class NodeGenerator:
          func.add_arg(C.variable('val',port.dsg.typename(node.typeList),pointer=is_pointer))         
          packLen=port.dsg.packLen(node.typeList)
          port.dsg.typeList= node.typeList
-         signalInfo.append(SignalInfo(offset,packLen,func,port.dsg,'pack',0)) #TODO: implement init value
+         tmp = SignalInfo(offset,packLen,func,port.dsg,'pack',0)
+         signalInfo.append(tmp) #TODO: implement init value
+         signalInfoMap[port.name]=tmp
          outPortDataLen+=packLen
          offset+=packLen
             
-      (initFunc,nodeDataFunc) = self.writeHeaderFile(header_fp, signalInfo, name.upper()+'_H')
+      (initFunc,nodeDataFunc) = self.writeHeaderFile(header_fp, signalInfo, signalInfoMap, name.upper()+'_H', node)
       self.writeSourceFile(source_fp,signalInfo,initFunc,nodeDataFunc, node, inPortDataLen, outPortDataLen)
