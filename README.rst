@@ -10,9 +10,10 @@ TBD
 Prerequisites
 -------------
 Python 3
+`cfile <https://github.com/cogu/cfile>`_
 
 Documentation
 -------------
-TBD
+Documentation can be found `here <http://apx.readthedocs.io/en/latest/>`_.
 
 
