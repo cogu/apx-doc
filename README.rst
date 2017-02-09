@@ -9,8 +9,9 @@ TBD
 
 Prerequisites
 -------------
-Python 3
-`cfile <https://github.com/cogu/cfile>`_
+
+   * `Python 3 <https://www.python.org/>`_
+   * `cfile <https://github.com/cogu/cfile>`_
 
 Documentation
 -------------
