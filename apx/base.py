@@ -45,7 +45,10 @@ def _calcIntTypeLen(dataType):
    return None
 
 
-class Port:
+class AutosarPort:
+   """
+   An AUTOSAR port (base type)
+   """
    def __init__(self,name,typeId):
       self.name = name
       self.typeId = typeId
@@ -74,9 +77,7 @@ class Port:
       else:
          raise NotImplementedError(str(type(item)))
 
-      
-
-class RequirePort(Port):
+class AutosarRequirePort(AutosarPort):
    def __init__(self, name, typeId, ws=None, port=None):
       super().__init__(name,typeId)
       if (ws is not None) and (port is not None):
@@ -89,11 +90,11 @@ class RequirePort(Port):
          return 'R"%s"T[%d]'%(self.name,self.typeId)
    
    def mirror(self):
-      other = ProvidePort(self.name, self.typeId)
+      other = AutosarProvidePort(self.name, self.typeId)
       other.attr = self.attr
       return other
 
-class ProvidePort(Port):
+class AutosarProvidePort(AutosarPort):
    def __init__(self, name, typeId, ws=None, port=None):
       super().__init__(name,typeId)
       if (ws is not None) and (port is not None):
@@ -106,12 +107,11 @@ class ProvidePort(Port):
          return 'P"%s"T[%d]'%(self.name,self.typeId)
 
    def mirror(self):
-      other = RequirePort(self.name, self.typeId)
+      other = AutosarRequirePort(self.name, self.typeId)
       other.attr = self.attr
       return other
 
-      
-class DataType:
+class AutosarDataType:
    def __init__(self,ws,dataType):
       self.name=dataType.name
       self.dsg=self._calcDataSignature(ws,dataType)
@@ -162,5 +162,49 @@ class DataType:
             result+='"%s"%s'%(elem.name, self._calcDataSignature(ws, childType))            
          result+="}"
          return result
-      else: raise Exception('uhandled data type: %s'%type(dataType))
+      else: raise Exception('unhandled data type: %s'%type(dataType))
       return ""
+
+
+class RawPort:
+   """
+   Raw APX port (base type)
+   """
+   def __init__(self, portType, name, dataSignature, attributes=None):
+      self.portType = portType
+      self.name = name
+      self.dsg = dataSignature
+      self.attr = attributes
+   
+   def __str__(self):
+      if self.attr is not None:
+         return '%s"%s"%s:%s'%(self.portType, self.name, self.dsg, self.attr)
+      else:
+         return '%s"%s"%s'%(self.portType, self.name, self.dsg)
+
+     
+class RawRequirePort(RawPort):
+   def __init__(self, name, dataSignature, attributes=None):
+      super().__init__('R',name, dataSignature, attributes)
+
+class RawProvidePort(RawPort):
+   def __init__(self, name, dataSignature, attributes=None):
+      super().__init__('P',name, dataSignature, attributes)
+      
+
+class RawDataType:
+   """
+   Raw APX datatype
+   """
+   def __init__(self, name, dataSignature, attributes=None):
+      self.name = name
+      self.dsg = dataSignature
+      self.attr = attributes
+   
+   def __str__(self):
+      if self.attr is not None:
+         return 'T"%s"%s:%s'%(self.name, self.dsg, self.attr)
+      else:
+         return 'T"%s"%s'%(self.name, self.dsg)
+   
+

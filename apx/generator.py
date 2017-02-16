@@ -77,7 +77,7 @@ class NodeGenerator:
                if operation == 'pack':
                   if dsg.data['arrayLen']>1:
                      code.append(C.statement('memcpy(%s,%s,%d)'%(localvar['bufptr'].name,valname,dsg.data['arrayLen']-1),indent=indent))
-                  code.append(C.statement("%s[%d]='\0'"%(localvar['bufptr'].name,dsg.data['arrayLen']),indent=indent))
+                  code.append(C.statement("%s[%d]='\\0'"%(localvar['bufptr'].name,dsg.data['arrayLen']),indent=indent))
                else:
                   code.append(C.statement('memcpy(%s,%s,%d)'%(valname,localvar['bufptr'].name,dsg.data['arrayLen']),indent=indent))
                code.append(C.statement('%s+=%d'%(localvar['bufptr'].name,dsg.data['arrayLen']),indent=indent))
@@ -86,7 +86,7 @@ class NodeGenerator:
                if operation == 'pack':
                   if dsg.data['arrayLen']>1:
                      code.append(C.statement('memcpy(&%s[%d],%s,%d)'%(buf.name,offset,valname,dsg.data['arrayLen']-1),indent=indent))
-                  code.append(C.statement("%s[%d]='\0')"%(buf.name,dsg.data['arrayLen']),indent=indent))
+                  code.append(C.statement("%s[%d]='\\0'"%(buf.name,offset+dsg.data['arrayLen']-1),indent=indent))
                else:
                   code.append(C.statement('memcpy(%s,&%s[%d],%d)'%(valname,buf.name,offset,dsg.data['arrayLen']),indent=indent))
             packLen=dsg.data['arrayLen']

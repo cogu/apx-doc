@@ -19,25 +19,31 @@ class Node:
             dataType = ws.find(portInterface.dataElements[0].typeRef)
             assert(dataType is not None)
             if dataType.name not in self.dataTypeMap:
-               item = apx.DataType(ws,dataType)
+               item = apx.AutosarDataType(ws,dataType)
                item.id=len(self.dataTypes)
                self.dataTypeMap[dataType.name]=item
                self.dataTypes.append(item)
+               assert (item is not None)
                return item
             else:
-               return self.dataTypeMap[dataType.name]
+               item = self.dataTypeMap[dataType.name]
+               assert (item is not None)
+               return item
          elif len(portInterface.dataElements)>1:
             raise NotImplementedError('SenderReceiverInterface with more than 1 element not supported')
+      return None
 
    
    def import_swc(self, ws, swc):
       assert(isinstance(swc, autosar.component.AtomicSoftwareComponent))
       for port in swc.providePorts:
          dataType=self._updateDataType(ws, port)
-         self.providePorts.append(apx.ProvidePort(port.name, dataType.id, ws, port))
+         if dataType is not None:
+            self.providePorts.append(apx.AutosarProvidePort(port.name, dataType.id, ws, port))
       for port in swc.requirePorts:
          dataType=self._updateDataType(ws, port)
-         self.requirePorts.append(apx.RequirePort(port.name, dataType.id, ws, port))
+         if dataType is not None:
+            self.requirePorts.append(apx.AutosarRequirePort(port.name, dataType.id, ws, port))
 
    def write(self, fp):
       """
