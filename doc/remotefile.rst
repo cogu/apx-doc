@@ -362,17 +362,44 @@ Immediately following the greeting message, the write messages starts.
 
 For address_header definition see address_header_
 
-Example
--------
+RemoteFile Example
+------------------
 
-TBD
+Header Examples
+~~~~~~~~~~~~~~~
 
+.. rst-class:: table-numbers
+
+   +------------+-------------+------------------------+
+   |   Address  | MORE_BIT    |   Packed Data          |
+   +============+=============+========================+
+   |     0      |  0 (false)  | ``"\x00\x00"``         |
+   +------------+-------------+------------------------+
+   |     0      |  1 (true)   | ``"\x40\x00"``         |
+   +------------+-------------+------------------------+
+   |   16383    |  0 (false)  | ``"\x3F\xFF"``         |
+   +------------+-------------+------------------------+
+   |   16383    |  1 (true)   | ``"\x7F\xFF"``         |
+   +------------+-------------+------------------------+
+   |   16384    |  0 (false)  | ``"\x80\x00\x40\x00"`` |
+   +------------+-------------+------------------------+
+   |   16384    |  1 (false)  | ``"\xC0\x00\x40\x00"`` |
+   +------------+-------------+------------------------+
+   |   16384    |  0 (false)  | ``"\x80\x00\x40\x00"`` |
+   +------------+-------------+------------------------+
+   |   16384    |  1 (false)  | ``"\xC0\x00\x40\x00"`` |
+   +------------+-------------+------------------------+
+   | 1073741823 |  0 (false)  | ``"\xBF\xFF\xFF\xFF"`` |
+   +------------+-------------+------------------------+
+   | 1073741823 |  1 (false)  | ``"\xFF\xFF\xFF\xFF"`` |
+   +------------+-------------+------------------------+
+   
 NumHeader
 ---------
 NumHeader encodes an integer in big endian, or network byte order. This integer is used as the message length (the message header).
 The integer is parsed first, which tells you how many bytes the message is. Then you wait until that number of bytes has arrived until you start parsing the message.
 
-NumHeader uses two forms, short and long. Short form is used to send short messages (up to 127 bytes) and long form is used to send long messages (32Kib using NumHeader16 or 4GiB using NumHeader32).
+The most significant bit of the first byte is called the LONG_BIT. When the bit is set it uses long form, when the bit is 0 it uses short form.
 
 NumHeader16
 ~~~~~~~~~~~
@@ -397,29 +424,29 @@ NumHeader16 uses 1 byte in short form and 2 bytes in long form. It can encode in
 
 .. rst-class:: table-numbers
 
-   +-----------+----------+----------------------+
-   | Byte #1              | Byte #2              | 
-   +===========+==========+======================+
-   |   BIT 7   | BITS 6-0 |      BITS 7-0        |
-   +-----------+----------+----------------------+
-   | LONG_BIT  |            VALUE                |
-   +-----------+----------+----------------------+
-   |     1     |           128-32767             |
-   +-----------+----------+----------------------+
+   +-----------+----------+-------------+
+   | Byte #1              | Byte #2     | 
+   +===========+==========+=============+
+   |   BIT 7   | BITS 6-0 | BITS 7-0    |
+   +-----------+----------+-------------+
+   | LONG_BIT  |      VALUE             |
+   +-----------+----------+-------------+
+   |     1     | 128-32767 (big endian) |
+   +-----------+----------+-------------+
 
 
 .. note::
 
-  When LONG_BIT=1 the values 0-127 can be considered to be an invalid range (since you would have used the short form instead).
+  When LONG_BIT=1 the values 0-127 can be considered to be an invalid range (since you would normally have used the short form instead).
   This means that you can reinterpret the range n=0-127 as 32768+n, raising the threshold of the maximum message length to 32768+127=32895 bytes.
   
-  This can be seen as an extension to NumHeader16 and isn't mandatory to implement.
+  This can be seen as an extension to NumHeader16.
 
 
 NumHeader32
 ~~~~~~~~~~~
 
-NumHeader32 uses 1 byte in short form and 4 bytes in long form. It can encode integers in the range 0-4294967295.
+NumHeader32 uses 1 byte in short form and 4 bytes in long form. It can encode integers in the range 0-2147483647.
 The short form of NumHeader32 is identical to the short form of NumHeader16.
 
 **NumHeader32 - short form (0-127)**:
@@ -436,7 +463,7 @@ The short form of NumHeader32 is identical to the short form of NumHeader16.
    |     0     |   0-127   |
    +-----------+-----------+
 
-**NumHeader32 - long form (values 128-4294967295)**:
+**NumHeader32 - long form (values 128-2147483647)**:
 
 .. rst-class:: table-numbers
 
@@ -447,5 +474,36 @@ The short form of NumHeader32 is identical to the short form of NumHeader16.
    +-----------+----------+----------+----------+----------+
    | LONG_BIT  |            VALUE                          |
    +-----------+----------+----------+----------+----------+
-   |     1     |           128-4294967295                  |
+   |     1     |           128-2147483647 (big endian)     |
    +-----------+----------+----------+----------+----------+
+
+NumHeader Examples 
+~~~~~~~~~~~~~~~~~~   
+      
+.. rst-class:: table-numbers
+  
+   +------------+----------------+------------------------+
+   |   Value    | NumHeader16    | NumHeader32            |
+   +============+================+========================+
+   |     0      | ``"\x00"``     | ``"\x00"``             |
+   +------------+----------------+------------------------+
+   |    127     | ``"\x7F"``     | ``"\x7F"``             |
+   +------------+----------------+------------------------+
+   |    128     | ``"\x80\x80"`` | ``"\x80\x00\x00\x80"`` |
+   +------------+----------------+------------------------+
+   |   32767    | ``"\xFF\FF"``  | ``"\x80\x00\x7F\xFF"`` |
+   +------------+----------------+------------------------+ 
+   |   32768    | ``"\x80\00"``  | ``"\x80\x00\x80\x00"`` |
+   +------------+----------------+------------------------+ 
+   |   32895    | ``"\x80\7F"``  | ``"\x80\x00\x80\x7F"`` |
+   +------------+----------------+------------------------+
+   | 2147483647 |  --            | ``"\xFF\xFF\xFF\xFF"`` |
+   +------------+----------------+------------------------+
+   
+   The table above demonstrates how (integer) values are represented in binary form using string literals.
+   These literals are valid C99 strings (compiles in both C(99) and C++).
+   
+   In python you will need to prepend the string literal with the character ``b``.   
+   
+   Example: ``"\x80\x80"`` -->  ``b"\x80\x80"``
+   

@@ -5,7 +5,7 @@ def readme():
         return f.read()
 
 setup(name='apx',
-      version='0.1.1',
+      version='0.1.2',
       description='A framework for sending AUTOSAR signal data to non-AUTOSAR applications',
       long_description=readme(),
       classifiers=[
@@ -18,13 +18,10 @@ setup(name='apx',
       author_email='congus8@gmail.com',
       license='MIT',
 	  install_requires=[
-          'cfile>=0.1.1',
 		  'autosar>=0.3.0'
       ],
       packages=['apx'],
-      
-	  dependency_links=[
-	  'https://github.com/cogu/cfile/archive/v0.1.1.tar.gz#egg=cfile-0.1.1',
-	  'https://github.com/cogu/autosar/archive/v0.3.0.tar.gz#egg=autosar-0.3.0'],
+      py_modules=['remotefile','numheader'],
+	  dependency_links=['https://github.com/cogu/autosar/archive/v0.3.0.tar.gz#egg=autosar-0.3.0'],
 	  zip_safe=False)
 	  
