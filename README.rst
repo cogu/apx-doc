@@ -3,15 +3,15 @@ APX
 
 A framework for sending AUTOSAR signal data to non-AUTOSAR applications
 
-**Usage**::
+Projects
+--------
 
-TBD
+* `APX for Python <https://github.com/cogu/py-apx>`_ -- The APX toolchain (parsers, code generators etc.). An APX client implementation is also in scope.
+* `APX for C <https://github.com/cogu/c-apx>`_ -- C implementation of APX client and router (for Windows and Linux).
+  
+  * APX-ES (sub-project) -- C implementation of APX clients for devices running with an RTOS or with no OS (coming soon).
 
-Prerequisites
--------------
-
-* `Python 3 <https://www.python.org/>`_
-* `cfile <https://github.com/cogu/cfile>`_
+* `APX for Qt <https://github.com/cogu/qt-apx>`_ -- Qt 5 implementation of APX client for integration with Qt/QML.
 
 Documentation
 -------------
