@@ -1,6 +1,7 @@
+import os, sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import apx
 import unittest
-import sys
-sys.path.insert(0, '../../')
 import numheader
 
 class TestNumHeader(unittest.TestCase):
