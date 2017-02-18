@@ -1,0 +1,9 @@
+[submodule "py-apx"]
+	path = py-apx
+	url = https://github.com/cogu/py-apx
+[submodule "c-apx"]
+	path = c-apx
+	url = https://github.com/cogu/c-apx
+[submodule "qt-apx"]
+	path = qt-apx
+	url = https://github.com/cogu/qt-apx
