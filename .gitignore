@@ -1,19 +1,19 @@
 # Compiled python modules.
 /*.pyc
-python3/__pycache__/
-python3/apx/__pycache__/
-python3/tests/__pycache__/
+py-apx/__pycache__/
+py-apx/apx/__pycache__/
+py-apx/tests/__pycache__/
 
 # Setuptools distribution folder.
-/python3/dist/
-/python3/build/
+/py-apx/dist/
+/py-apx/build/
 
 # Python egg metadata, regenerated from source files by setuptools.
-python3/*.egg-info
+py-apx/*.egg-info
 
 #sphinx-doc files
 doc/_build/
 
 #komodoproject files
-python3/*.komodoproject
-python3/.komodotools/
+py-apx/*.komodoproject
+py-apx/.komodotools/
