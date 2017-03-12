@@ -312,6 +312,10 @@ the start address of the file you want to close.
    +---------------------+---------+
    |   CmdType           |  Value  |
    +=====================+=========+
+   | RMF_CMD_ACK         |    0    |
+   +---------------------+---------+
+   | RMF_CMD_NACK        |    1    |
+   +---------------------+---------+
    | RMF_CMD_FILE_INFO   |    3    |
    +---------------------+---------+
    | RMF_CMD_REVOKE_FILE |    4    |
@@ -323,6 +327,17 @@ the start address of the file you want to close.
 
 Command data structures
 -----------------------
+
+Acknowledge
+~~~~~~~~~~~
+
+.. rst-class:: table-numbers
+   
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   | Offset |    Name    | Type   |  Value              |   Description                                      |
+   +========+============+========+=====================+====================================================+
+   |   0    |  cmdType   |  U32LE | RMF_CMD_ACK         |   Command type                                     |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
    
 FileInfo (length: 48-1024 bytes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -435,21 +450,36 @@ FileClose (length: 8 bytes)
 RemoteFile greeting message
 ---------------------------
 
-When a client connects to a server, both parties (nodes) sends out a single greeting in ASCII text telling which version of RemoteFile it supports
-followed by zero or more MIME-headers followed by an empty line. This is done once per connection.
+When a client connects to a server, it sends out a single greeting message which tells which version of RemoteFile it supports
+followed by zero or more headers followed by an empty line (a single newline character). This is done once per connection.
+The greeting message is prepended by a normal message header (such as NumHeader16 or NumHeader32).
+If NumHeader is used before greeting message, it is strongly recommended that the greeting message itself is less than or equal to 127 characters.
+This is because the short forms of both NumHeader16 and NumHeader32 are identical.
 
-Immediately following the greeting message, the write messages starts.
+If the RemoteFile server accepts the greeting message it responds with a single acknowledge command.
+The client must wait for the acknowledge from the server before sending any further messages.
+After the acknowledge has been sent to the client, both server and client is allowed to send remotefile write messages to the each other.
 
 ::
 
-   remotefile: greeting write_msg*   
+   remotefile_client: greeting write_msg*
+   remotefile_server: acknowledge write_msg*
    greeting: "RMFP/1.0\n" header* "\n"
    header: "[_A-Za-z][_\-A-Za-z0-9]+" : "[_\-A-Za-Z0-9]+" "\n"
-   write_msg: address_header data   
-   data: byte*
+   write_msg: address_header msg_data
+   msg_data: byte*
+   
+   
+   
 
 For address_header definition see address_header_
 
+Greeting Headers
+~~~~~~~~~~~~~~~~
+
+**NumHeader-Format**
+
+This header indicates which NumHeader format is used. Valid values are *16* and *32*.
    
 NumHeader
 ---------
