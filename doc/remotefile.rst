@@ -28,7 +28,6 @@ Files in the RemoteFile layer are just memory mappped byte arrays with:
   2. An associated (fixed) length (e.g. 100 bytes).
   3. A (virtual) start address) where the file is mapped (what this means will be explained later).
 
-
 Example
 --------
 Computer 1 wants to send the time of day as an ASCII string to Computer 2 using the following format::
@@ -174,6 +173,7 @@ This file is always open and node A uses it to send open/close requests into nod
 
 From node A's perspective, node A is the local node and node B is the remote node. From nodes B's perspective, node B is the local node and node A is the remote node.
 
+
 RemoteFile messages
 -------------------
 
@@ -181,7 +181,6 @@ A local node can at any time write anywhere in the 1GiB address range of the rem
 
    1. There is a file mapped at the address of the write.
    2. The file in question is currently open (the remote node has previously sent a request to open the file).
-
 
 
 A write message has the following format::
@@ -192,9 +191,182 @@ A write message has the following format::
 
 The length of *data* can be calculated as: length(*write_msg*) - length(*address_header*)
 where length(*write_msg*) needs to be specified by an underlying protocol (see NumHeader_) and length(*address_header*)
-can be either 2 or 4 bytes depending on the most significant bit of the first byte of *address_header* (see definition below).
+can be either 2 or 4 bytes depending on the most significant bit of the first byte of *address_header* (see definition of :ref:`address_header`).
+
+Writing data into remote memory
+-------------------------------
+
+Writing data into the 1GiB memory of the remote node is the only allowed message type in the remotefile protocol (after the initial greeting message has been sent/acknowledged).
+Special operations (called commands) are written to a special file located in the last 1024 bytes of the address space.
+
+There are 4 types of messaging formats that can be employed by the protocol when it needs to write data to remote memory:
+
+   * Short length & Low address
+   * Long length & Low address
+   * Short length & High address
+   * Long length & High address
+
+Short length & Low address
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**When to Use:** Writing 0-127 bytes with start address 0-16383.
+
+**Message Layout:**
+
+.. rst-class:: table-numbers
+
+   +------+---------------------+--------+---------------------------+
+   | Byte |    Protocol         | Value  |       Meaning             |
+   +======+=====================+========+===========================+
+   | 0    | NumHeader (16/32)   |  0-127 |  Length of message        |
+   +------+---------------------+--------+---------------------------+
+   | 1    |  RemoteFile         | 0-255  | Start address (high byte) |
+   +------+---------------------+--------+---------------------------+
+   | 2    | RemoteFile          | 0-255  | Start address (low byte)  |
+   +------+---------------------+--------+---------------------------+
+   | 3    | Application data    | 0-255  | Payload  (e.g. APX data)  |
+   +------+---------------------+--------+---------------------------+
+   | ...  |   ...               | ...    | ...                       |
+   +------+---------------------+--------+---------------------------+
+
+Long length & Low address
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**When to Use:** Writing 128 bytes or more with start address 0-16383.
+
+**Message Layout:**
+
+.. rst-class:: table-numbers
+
+   NumHeader16:
+   
+   +------+---------------------+-----------+--------------------------------+
+   | Byte |    Protocol         | Value     |       Meaning                  |
+   +======+=====================+===========+================================+
+   | 0    | NumHeader16         | 0x80-0xFF |  Length of message (high byte) |
+   +------+---------------------+-----------+--------------------------------+
+   | 1    | NumHeader16         | 0x00-0xFF |  Length of message (low byte)  |
+   +------+---------------------+-----------+--------------------------------+
+   | 2    | RemoteFile          | 0-255     | Start address (high byte)      |
+   +------+---------------------+-----------+--------------------------------+
+   | 3    | RemoteFile          | 0-255     | Start address (low byte)       |
+   +------+---------------------+-----------+--------------------------------+
+   | 4    | Application data    | 0-255     | Payload  (e.g. APX data)       |
+   +------+---------------------+-----------+--------------------------------+
+   | ...  |   ...               | ...       | ...                            |
+   +------+---------------------+-----------+--------------------------------+
+
+   NumHeader32:
+
+   +------+---------------------+-----------+---------------------------+
+   | Byte |    Protocol         | Value     |       Meaning             |
+   +======+=====================+===========+===========================+
+   | 0    | NumHeader32         | 0x80-0xFF |  Length of message (MSB)  |
+   +------+---------------------+-----------+---------------------------+
+   | 1    | NumHeader32         | 0x00-0xFF |  Length of message        |
+   +------+---------------------+-----------+---------------------------+
+   | 2    | NumHeader32         | 0x00-0xFF |  Length of message        |
+   +------+---------------------+-----------+---------------------------+
+   | 3    | NumHeader32         | 0x00-0xFF |  Length of message (LSB)  |
+   +------+---------------------+-----------+---------------------------+
+   | 4    | RemoteFile          | 0-255     | Start address (high byte) |
+   +------+---------------------+-----------+---------------------------+
+   | 5    | RemoteFile          | 0-255     | Start address (low byte)  |
+   +------+---------------------+-----------+---------------------------+
+   | 6    | Application data    | 0-255     | Payload  (e.g. APX data)  |
+   +------+---------------------+-----------+---------------------------+
+   | ...  |   ...               | ...       | ...                       |
+   +------+---------------------+-----------+---------------------------+
+
+Short length & High address
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**When to Use:** Writing 0-127 bytes with start address 16384 or higher.
+
+**Message Layout:**
+
+.. rst-class:: table-numbers
+
+   +------+---------------------+--------+--------------------------+
+   | Byte |    Protocol         | Value  |       Meaning            |
+   +======+=====================+========+==========================+
+   | 0    | NumHeader (16/32)   |  0-127 |  Length of message       |
+   +------+---------------------+--------+--------------------------+
+   | 1    | RemoteFile          | 0-255  | Start address (MSB)      |
+   +------+---------------------+--------+--------------------------+
+   | 2    | RemoteFile          | 0-255  | Start address            |
+   +------+---------------------+--------+--------------------------+
+   | 3    | RemoteFile          | 0-255  | Start address            |
+   +------+---------------------+--------+--------------------------+
+   | 4    | RemoteFile          | 0-255  | Start address (LSB)      |
+   +------+---------------------+--------+--------------------------+
+   | 5    | Application data    | 0-255  | Payload (e.g. APX data)  |
+   +------+---------------------+--------+--------------------------+
+   | ...  |   ...               | ...    | ...                      |
+   +------+---------------------+--------+--------------------------+
+
+Long length & High address
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+**When to Use:** Writing 128 bytes or more with start address 16384 or higher.
+
+**Message Layout:**
+
+.. rst-class:: table-numbers
+
+   NumHeader16:
+   
+   +------+---------------------+-----------+--------------------------------+
+   | Byte |    Protocol         | Value     |       Meaning                  |
+   +======+=====================+===========+================================+
+   | 0    | NumHeader16         | 0x80-0xFF |  Length of message (high byte) |
+   +------+---------------------+-----------+--------------------------------+
+   | 1    | NumHeader16         | 0x00-0xFF |  Length of message (low byte)  |
+   +------+---------------------+-----------+--------------------------------+
+   | 1    | RemoteFile          | 0-255     | Start address (MSB)            |
+   +------+---------------------+-----------+--------------------------------+
+   | 2    | RemoteFile          | 0-255     | Start address                  |
+   +------+---------------------+-----------+--------------------------------+
+   | 3    | RemoteFile          | 0-255     | Start address                  |
+   +------+---------------------+-----------+--------------------------------+
+   | 4    | RemoteFile          | 0-255     | Start address (LSB)            |
+   +------+---------------------+-----------+--------------------------------+
+   | 4    | Application data    | 0-255     | Payload  (e.g. APX data)       |
+   +------+---------------------+-----------+--------------------------------+
+   | ...  |   ...               | ...       | ...                            |
+   +------+---------------------+-----------+--------------------------------+
+
+   NumHeader32:
+   
+   +------+---------------------+-----------+---------------------------+
+   | Byte |    Protocol         | Value     |       Meaning             |
+   +======+=====================+===========+===========================+
+   | 0    | NumHeader32         | 0x80-0xFF |  Length of message (MSB)  |
+   +------+---------------------+-----------+---------------------------+
+   | 1    | NumHeader32         | 0x00-0xFF |  Length of message        |
+   +------+---------------------+-----------+---------------------------+
+   | 2    | NumHeader32         | 0x00-0xFF |  Length of message        |
+   +------+---------------------+-----------+---------------------------+
+   | 3    | NumHeader32         | 0x00-0xFF |  Length of message (LSB)  |
+   +------+---------------------+-----------+---------------------------+
+   | 4    | RemoteFile          | 0-255     | Start address (MSB)       |
+   +------+---------------------+-----------+---------------------------+
+   | 5    | RemoteFile          | 0-255     | Start address             |
+   +------+---------------------+-----------+---------------------------+
+   | 6    | RemoteFile          | 0-255     | Start address             |
+   +------+---------------------+-----------+---------------------------+
+   | 7    | RemoteFile          | 0-255     | Start address (LSB)       |
+   +------+---------------------+-----------+---------------------------+
+   | 8    | Application data    | 0-255     | Payload  (e.g. APX data)  |
+   +------+---------------------+-----------+---------------------------+
+   | ...  |   ...               | ...       | ...                       |
+   +------+---------------------+-----------+---------------------------+
+
 
 .. _address_header:
+
+Address Header
+--------------
 
 The *address_header* can have two forms: low and high address form (similar to short/long form of NumHeader_).
 
@@ -480,6 +652,7 @@ Greeting Headers
 **NumHeader-Format**
 
 This header indicates which NumHeader format is used. Valid values are *16* and *32*.
+   
    
 NumHeader
 ---------

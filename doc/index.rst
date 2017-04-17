@@ -10,5 +10,6 @@ Contents:
       
    apx_text
    remotefile
+   apx_vm
    
 
