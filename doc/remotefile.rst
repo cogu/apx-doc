@@ -8,139 +8,28 @@ RemoteFile 1.0 (draft)
 
 .. highlight:: none
 
+Basic Concepts
+--------------
+
 RemoteFile is a protocol used by two nodes in a point-to-point communication link (e.g. a TCP socket).
-It's primary use case is to synchronize serialized objects (byte arrays) from one node to another but it can potentially be used for any content.
+It's primary use case is to act as the lower communication layer of `APX <https://github.com/cogu/apx>`_
 
 RemoteFile uses a publish/subscribe pattern where the first node (called the local node) publishes a file which the other node (called the remote node) can choose to open.
 If the remote node opens the file then the following things will happen:
 
    1. The local node (the publisher) will initially send the entire file to the remote node (the subscriber).
-   2. The local node then sets up a subscription scheme of sorts, allowing it to partially update the file using write commands (delta-copy commands).
+   2. The local node then sets up a subscription scheme of sorts, allowing it to partially update the file using write commands (delta-copy).
    3. The local node stops sending file updates to the remote node if the remote node closes the file (or if the remote node disconnects).
 
 The initial file transfer and delta-copy are unidirectional (data is sent from the publisher to the subscriber).
 This means that the remote node can never write back (update) the file in the local nodes memory.
-However, RemoteFile itself is a bi-directional protocol meaning that both nodes can send files to each other.
+However, RemoteFile itself is a bi-directional protocol meaning that both nodes can communicate by sending (or writing) to two different files.
 
 Files in the RemoteFile layer are just memory mappped byte arrays with:
 
   1. An associated name (e.g. "myfile.txt").
   2. An associated (fixed) length (e.g. 100 bytes).
   3. A (virtual) start address) where the file is mapped (what this means will be explained later).
-
-Example
---------
-Computer 1 wants to send the time of day as an ASCII string to Computer 2 using the following format::
-
-   hh:mm:ss
-
-(For simplicity, let's assume a 24h clock.)
-
-In addition, computer 1 will send an updated time string to computer 2 (using delta-copy) once every second.
-
-In this scenario, computer 1 is the local node and computer 2 is the remote node. The remote node connects to the local node using TCP.
-   
-The string will require 8 characters to represent.
-
-  +--------+----------------+--------+
-  | offset | description    | value  |
-  +========+================+========+
-  | 0      |  hours (tens)  |   0-2  |
-  +--------+----------------+--------+
-  | 1      |  hours (ones)  |   0-3  |
-  +--------+----------------+--------+
-  | 2      | (fixed char)   |    :   |
-  +--------+----------------+--------+
-  | 3      | minutes (tens) |  0-5   |
-  +--------+----------------+--------+
-  | 4      | minutes (ones) |  0-9   |
-  +--------+----------------+--------+
-  | 5      | (fixed char)   |   :    |
-  +--------+----------------+--------+
-  | 6      | seconds (tens) |   0-5  |
-  +--------+----------------+--------+
-  | 7      | seconds (ones) |   0-9  |
-  +--------+----------------+--------+
-
-Min::
-
-  00:00:00
-  
-Max::
-  
-  23:59:59
-
-
-
-Init mode
-~~~~~~~~~
-
-   1. The remote node (computer 2) connects to the local node (using a TCP socket).
-   2. The local node (computer 1) sends a FileInfo struct to remote node containing a file name (name="time.txt") and a file length (length=8).
-   3. The remote node sends an OpenFile struct back to the local node, requesting to open the file "time.txt".
-   4. Local node sends current content of "time.txt" to the remote node (8 bytes).
-   
-For this example, let's assume that the content of "time.txt" during initial transfer in step 4 had the following content::
-
-   12:34:56
-
-Delta-copy mode
-~~~~~~~~~~~~~~~
-
-Let's say we want to save bandwith in the communication link and send as few bytes as possible.
-This can be acheived by delta copying changes from the local nodes version of "time.txt" to the remote node's copy of "time.txt".
-
-::
-   
-   12:34:56 => 12:34:57
-   
-Only the last character (offset 7) has changed, send delta copy command with length 1:
-
-::
-  
-  offset:7,
-  len:1,
-  data:"7"
-
-------------
-
-::
-   
-   12:34:59 => 12:35:00
-
-When the seconds value changes from 59 to 00 then minutes increases from 34 to 35.
-This can be sent as delta-copy in two different ways:
-
-------------
-
-::
-  
-   offset:4,
-   len:4,
-   data:"5:00"
-  
-or
-
-::
-
-   offset:4,
-   len:1,
-   data:"5"
-   
-directly followed by:
-
-::
-
-   offset:6,
-   len:2,
-   data:"00"
-  
-In this case, the first form is recommended since it uses less overhead bytes even though we overwrite the ':' character with the same value.
-
-**Note:** This example is used to demonstrate the RemoteFile protocol only. Using ASCII strings to send time values between two computers is neither common or very efficient.
-
-Basic Concepts
---------------
 
 Message based communication
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -150,12 +39,12 @@ RemoteFile depends on a lower layer protocol that can send messages. A message h
    1. A message header containing the length of the message.
    2. A message body containing the message data (sometimes called the message payload).
    
-Since RemoteFile is designed to be used on all kinds of communication links (TCP, websockets, CAN, SPI etc.) it
+Since RemoteFile is designed to be used on multiple communication links (TCP, websockets, CAN, SPI etc.) it
 does not officially define a message header since there usually exists protocols for this already.
 
 In case you do not have a message passing protocol in place but you do have a stream based communication link (like a TCP socket) you can use NumHeader_.
 
-If you plan to use RemoteFile on TCP then NumHeader32_ is the recomended choice.
+If you plan to use RemoteFile on TCP then NumHeader32_ is the recommended choice.
 
 The address space
 ~~~~~~~~~~~~~~~~~
@@ -179,8 +68,8 @@ RemoteFile messages
 
 A local node can at any time write anywhere in the 1GiB address range of the remote node's memory map under these conditions:
 
-   1. There is a file mapped at the address of the write.
-   2. The file in question is currently open (the remote node has previously sent a request to open the file).
+   1. The remote node has mapped a file into that address range.
+   2. The file in question is currently open (the local node has sent an open file request to the remote node).
 
 
 A write message has the following format::
@@ -481,21 +370,29 @@ the start address of the file you want to close.
   
 .. rst-class:: table-numbers
    
-   +---------------------+---------+
-   |   CmdType           |  Value  |
-   +=====================+=========+
-   | RMF_CMD_ACK         |    0    |
-   +---------------------+---------+
-   | RMF_CMD_NACK        |    1    |
-   +---------------------+---------+
-   | RMF_CMD_FILE_INFO   |    3    |
-   +---------------------+---------+
-   | RMF_CMD_REVOKE_FILE |    4    |
-   +---------------------+---------+
-   | RMF_CMD_FILE_OPEN   |    10   |
-   +---------------------+---------+
-   | RMF_CMD_FILE_CLOSE  |    11   |
-   +---------------------+---------+
+   +------------------------+---------+
+   |   CmdType              |  Value  |
+   +========================+=========+
+   | RMF_CMD_ACK            |    0    |
+   +------------------------+---------+
+   | RMF_CMD_NACK           |    1    |
+   +------------------------+---------+
+   | RMF_CMD_FILE_INFO      |    3    |
+   +------------------------+---------+
+   | RMF_CMD_REVOKE_FILE    |    4    |
+   +------------------------+---------+
+   | RMF_CMD_HEARTBEAT_RQST |    5    |
+   +------------------------+---------+
+   | RMF_CMD_HEARTBEAT_RSP  |    6    |
+   +------------------------+---------+
+   | RMF_CMD_PING_RQST      |    7    |
+   +------------------------+---------+
+   | RMF_CMD_PING_RSP       |    8    |
+   +------------------------+---------+
+   | RMF_CMD_FILE_OPEN      |    10   |
+   +------------------------+---------+
+   | RMF_CMD_FILE_CLOSE     |    11   |
+   +------------------------+---------+
 
 Command data structures
 -----------------------
@@ -589,9 +486,76 @@ FileRevoke (length: 8 bytes)
    +========+============+========+=====================+====================================================+
    |   0    |  cmdType   |  U32LE | RMF_CMD_FILE_REVOKE |   Command type                                     |
    +--------+------------+--------+---------------------+----------------------------------------------------+
-   |   4    |  address   |  U32LE |     0-2^30          |   Start-address of the memory mapped file to revoke|
+   |   4    |  address   |  U32LE |     0-2^30-1        |   Start-address of the memory mapped file to revoke|
    +--------+------------+--------+---------------------+----------------------------------------------------+
 
+Heartbeat (length: 4 bytes)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A client can send a heartbeat request command to a server to see if the server is still present. The server should respond with a heartbeat response command.
+   
+**Request**
+
+.. rst-class:: table-numbers
+
+   +--------+------------+--------+------------------------+----------------------------------------------------+
+   | Offset |    Name    | Type   |  Value                 |   Description                                      |
+   +========+============+========+========================+====================================================+
+   |   0    |  cmdType   |  U32LE | RMF_CMD_HEARTBEAT_RQST |  Command type                                      |
+   +--------+------------+--------+------------------------+----------------------------------------------------+
+
+**Response**
+
+.. rst-class:: table-numbers
+
+   +--------+------------+--------+------------------------+----------------------------------------------------+
+   | Offset |    Name    | Type   |  Value                 |   Description                                      |
+   +========+============+========+========================+====================================================+
+   |   0    |  cmdType   |  U32LE | RMF_CMD_HEARTBEAT_RSP  |  Command type                                      |
+   +--------+------------+--------+------------------------+----------------------------------------------------+
+
+
+Ping (length: 16 bytes)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A ping is a more sophisticated form of heartbeat. A ping request can be sent from a client to server containing:
+
+* A file (address) to ping. This can be used by the server to relay the ping request to another client.
+* A timestamp (seconds, microseconds). The timestamp data will be echoed back in the ping response command.
+
+**Request**
+
+.. rst-class:: table-numbers
+   
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   | Offset |    Name    | Type   |  Value              |   Description                                      |
+   +========+============+========+=====================+====================================================+
+   |   0    |  cmdType   |  U32LE | RMF_CMD_PING_RQST   |  Command type                                      |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   |   4    |  address   |  U32LE | 0-2^30-1            |  Start-address of the associated file              |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   |   8    | timestamp1 |  U32LE | 0-2^32-1            |  timestamp seconds                                 |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   |   12   | timestamp2 |  U32LE | 0-2^32-1            |  timestamp micro-seconds                           |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+
+**Response**
+
+.. rst-class:: table-numbers
+   
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   | Offset |    Name    | Type   |  Value              |   Description                                      |
+   +========+============+========+=====================+====================================================+
+   |   0    |  cmdType   |  U32LE | RMF_CMD_PING_RSP    |  Command type                                      |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   |   4    |  address   |  U32LE | 0-2^30-1            |  Start-address of the associated file              |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   |   8    | timestamp1 |  U32LE | 0-2^32-1            |  timestamp seconds                                 |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+   |   12   | timestamp2 |  U32LE | 0-2^32-1            |  timestamp micro-seconds                           |
+   +--------+------------+--------+---------------------+----------------------------------------------------+
+
+Use the special value 0xFFFFFFFF as the address if the client just wants to find the ping time to the server itself (in which case the address field is not used).
    
 FileOpen (length: 8 bytes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
