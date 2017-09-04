@@ -1,21 +1,58 @@
 APX
---------
+===
 
 APX is a set of protocols, toolchains and libraries used for sending automotive signals on sockets and SPI buses.
 
-Subprojects
------------
-
-* `APX for Python <https://github.com/cogu/py-apx>`_ -- The APX toolchain (parsers, code generators etc.). APX client support is partially implemented.
-* `APX for C <https://github.com/cogu/c-apx>`_ -- C implementation of APX client and broker (for Windows and Linux).
-  
-  * APX-ES - APX for embedded systems. A subset of of Apx for C intented for systems with no OS or an RTOS.
-
-* `APX for Qt <https://github.com/cogu/qt-apx>`_ -- Qt 5 implementation of APX client for integration with Qt/QML.
-* `APX for Excel <https://github.com/cogu/xl-apx>`_ -- A pure VB7 implementation of the APX protocol for Excel.
-
 Documentation
 -------------
-Documentation can be found `here <http://apx.readthedocs.io/en/latest/>`_
+Documentation is in early stages and can be found `here <http://apx.readthedocs.io/en/latest/>`_
 
+The APX protocol stack
+----------------------
 
+.. image:: _static/APX_Protocols.png
+
+Sub-projects
+------------
+
+This repository contains only contains documentation. See the sub-projects below for implementations.
+
+`APX for C <https://github.com/cogu/c-apx>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Main implementation of APX.
+
+* APX server (TCP)
+* APX client (TCP, SPI Bus using APX-ES)
+* Windows compiler support:
+
+  - Visual Studio (2010/2013/2015/2017)
+  - GCC (any version) using Cygwin (MakeFile and Eclipse projects included)
+
+* Linux compiler support:
+
+  - GCC (any version)
+
+* Embedded compiler support (verified so far):
+
+  - Green Hills (V850)
+
+`APX for Qt <https://github.com/cogu/qt-apx>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Qt 5 implementation of APX client for integration with Qt/QML.
+
+`APX for C# <https://github.com/fousk/cs-apx>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+C# implementation of APX client.
+
+`APX for Excel <https://github.com/cogu/xl-apx>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+VB7.1 implementation of APX client for Excel.
+
+`APX for Python3 <https://github.com/cogu/py-apx>`_
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The APX toolchain (parsers, code generators etc.). The Python APX client support is partially implemented.
