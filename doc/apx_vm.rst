@@ -5,14 +5,14 @@ Opcode Table
 ------------
 
 +---------------+---------------+-------------------------------------------------+--------------------------+
-| Opcode Number | Opcode Name   | Opcode arguments                                | Description              |
+| Opcode Number | Opcode Name   | Opcode arguments (additional bytes)             | Description              |
 +===============+===============+=================================================+==========================+
 | 0             |    NOP        |                                                 | No operation             |
 +---------------+---------------+-------------------------------------------------+--------------------------+
-| 1             |   ARGS        | 1. progTypeByte: (0)=pack, (1)=unpack           | program arguments        |
+| 1             |  PROG_HEADER  | 1. progTypeByte: (0)=pack, (1)=unpack           | program header           |
 |               |               | 2. variantTypeByte (see below)                  |                          |
 |               |               | 3. lengthByte1 (MSB)                            |                          |
-|               |               | 4. lengthByte2 (MSB)                            |                          |
+|               |               | 4. lengthByte2                                  |                          |
 |               |               | 5. lengthByte3 (LSB)                            |                          |
 +---------------+---------------+-------------------------------------------------+--------------------------+
 |  2            | PACK_U8       |                                                 | pack single uint8        |
@@ -82,3 +82,62 @@ Opcode Table
 +---------------+---------------+-------------------------------------------------+--------------------------+
 |  33           | ARRAY_LEAVE   |                                                 |                          |
 +---------------+---------------+-------------------------------------------------+--------------------------+
+
+APX Variants
+------------
+
+Variants are variables that can store values of different types. They are supported in one way or another in most programming languages.
+
+**Types of variants:**
+
+- Scalars (integers, strings)
+- Lists (list of variants)
+- Maps (key-value map to variants)
+
+Variant types are identified internally using integers according to the following table:
+
++-------+---------------+
+| Value |     Name      |
++=======+===============+
+| -1    | VTYPE_INVALID |
++-------+---------------+
+| 0     | VTYPE_SCALAR  |
++-------+---------------+
+| 1     | VTYPE_LIST    |
++-------+---------------+
+| 2     | VTYPE_MAP     |
++-------+---------------+
+
+Variant Language Mapping
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Each APX implementation maps the APX variant according to what is available to the language. The following table shows how the mapping is done for languages that implements APX.
+
++---------------------------+--------------+--------------+----------------------+
+| Programming Language      | VTYPE_SCALAR | VTYPE_LIST   | VTYPE_MAP            |
++===========================+==============+==============+======================+
+| C (with dtl_type library) | dtl_sv_t     | dtl_av_t     | dtl_hv_t             |
++---------------------------+--------------+--------------+----------------------+
+| C++ (with Qt variants)    | QVariant     | QVariantList | QVariantMap          |  
++---------------------------+--------------+--------------+----------------------+
+| Python                    | (int, str)   | list         | dict                 |
++---------------------------+--------------+--------------+----------------------+
+| Visual Basic (Excel)      | Variant      | Variant      | Scripting.Dictionary |
++---------------------------+--------------+--------------+----------------------+
+
+Opcode Details
+--------------
+
+PROG_HEADER
+~~~~~~~~~~~
+
+The program header opcode is the first instruction of a program. It indicates what kind of program it is and what kind of data it operates on.
+
+**progTypeByte:** What kind of program is this? (0)=pack, (1)=unpack.
+
+**variantTypeByte:** What value type is expected? (-1)=VTYPE_INVALID, (0)=VTYPE_SCALAR, (1)=VTYPE_LIST, (2)=VTYPE_MAP
+
+**length:** Number of raw bytes this programs uses to pack/unpack the variant data. This is stored as a 24-bit integer using big endian byte order.
+
+
+
