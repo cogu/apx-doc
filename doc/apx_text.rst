@@ -7,7 +7,7 @@ APX Text
 
 .. highlight:: none
 
-APX Text is a human-readable data definition language used to describe signals sent/received in an automotive system. APX files are stored on disk using the .apx file ending.
+APX Text is a data definition language used to describe the signals sent from and received to a software component. APX files uses the .apx file extension.
 
 Example (Example.apx)::
 
@@ -60,11 +60,11 @@ The Sender component has two provide ports and can be represented in APX Text as
 
 Line 1: This is the file header, it says that this is an APX file and that the version is 1.2 (current version).
 
-Line 2: The letter N represents an APX Node line. The name of the node is "Sender". Note that in APX we use the term *node* to represent software components.
+Line 2: The letter N represents an APX Node line. The name of the node is "Sender". Note that in APX we use the term *node* instead of *software component*.
 
 Line 3: The letter P represents a provide port line. The name of the port is VehicleSpeed and its type is uint16. The initial value is 65535.
 
-Line 4: This is anohter provide port line. This one has the name EngineSpeed and its type is also uint16. The initial value is 65535.
+Line 4: This is another provide port line. This one has the name EngineSpeed and its type is also uint16. The initial value is 65535.
 
 Similarly, the Receiver component has two require ports and can be represented in APX Text as follows::
 
@@ -76,28 +76,50 @@ Similarly, the Receiver component has two require ports and can be represented i
 Port Lines
 ----------
 
+Port lines consists of several parts:
+
+- Port Type
+- Port Signature
+ 
+  - Port Name
+  - Data Signature
+
+- Port Attributes
+
 .. image:: _static/APX_PortSignature.png
 
-Port lines consists of several parts where the most important bit is the port signature. The port signature consists of the port name followed by its
-data signature. Each port line has an optional port attribute section after the data signature.
-Port attributes are most often used to set the initial value of the port but can also be used to set queued port attributes as well as parameter attributes.
 
 Examples:
 
 +-----------------------------+-----------+-------------------------+----------------+-----------------+
 | Port Line                   | Port Type |   Port Signature        | Data Signature | Port Attributes |
 +=============================+===========+=========================+================+=================+
-| P"VehicleSpeed"S:=65535     | Provide   | "VehicleSpeed"S         | S              | =65535          |
+| P"VehicleSpeed"S:=65535     |   Provide | "VehicleSpeed"S         | S              | =65535          |
 +-----------------------------+-----------+-------------------------+----------------+-----------------+
-| R"EngineSpeed"S:=65535      | Require   | "EngineSpeed"S          | S              | =65535          |
+| R"EngineSpeed"S:=65535      |   Require | "EngineSpeed"S          | S              | =65535          |
 +-----------------------------+-----------+-------------------------+----------------+-----------------+
-| P"ParkBrakeStatus"C(0,3):=3 | Provide   | "ParkBrakeStatus"C(0,3) | C(0,3)         | =3              |
+| P"ParkBrakeStatus"C(0,3):=3 |   Provide | "ParkBrakeStatus"C(0,3) | C(0,3)         | =3              |
 +-----------------------------+-----------+-------------------------+----------------+-----------------+
 
-Data Signatures
----------------
+Port Type
+~~~~~~~~~
 
-Primitive types::
+Port type is a single character where P stands for (start of) Provide port and R stands for (start of) Require port.
+
+Port Signature
+~~~~~~~~~~~~~~
+
+The port signature is the port name and data signature combined (with its port direction removed).
+
+Data Signature
+~~~~~~~~~~~~~~
+
+The data signature is also known as the data type. It can be a simple, one-letter character or it can be a complex data type or even a type reference.
+
+Primitive types
+^^^^^^^^^^^^^^^
+
+::
 
    a: string (null-terminated ASCII string)
    c: sint8  (signed 8-bit value)
@@ -109,28 +131,95 @@ Primitive types::
    L: uint32 (unsigned 32-bit value)
    U: uint64 (unsigned 64-bit value)
 
-Array type signature:
-~~~~~~~~~~~~~~~~~~~~~
+Examples::
 
-Each primitive type character may be optionally followed by the characters "[n]" where n is the array length (repeat count).
-Strings (a) must always be defined as array types. Note that for strings the last character is always reserved for the null-terminator.
+   P"OutPort1"c:=127 #Provide port with type sint8 and initial value 127
+   P"OutPort2"C:=255 #Provide port with type uint8 and initial value 255
+   R"InPort1"s:=-1   #Require port with type sin16 and initial value -1
+   R"InPort2"S       #Require port with type uint16 and no initial value (which defaults to 0)
+  
+Min/Max Value Range
+^^^^^^^^^^^^^^^^^^^
+
+Each primitive type can have an optional min/max value range appended to it. This is done by adding **(min,max)** to the right of the primitive type.
+
+Any port which as no min/max range simply assumes that the entire range of the underlying data type is a valid range
 
 Examples::
+
+   R"IsEngineRunning"C(0,1)      #type:uint8, min:0, max:1
+   R"UnitSelection"C(0,3)        #type:uint8, min:0, max:3
+   P"LightSensorValue"S(0,10000) #type:uint16, min:0, max:10000
+   P"U8Signal"C                  #type: uin8, min:0, max:255 (implicit)
+   P"U16Signal"S                 #type: uin8, min:0, max:65535 (implicit)
+
+Min/max range is part of the port/data signature. The following 2 port signatures are **not** the same.
+Since the second signal has no min/max range, it gets implictly treated as if it said C(0,255), which is the full range of its data type (uint8 in this case).
+
+::
    
-   S[4]  array of uint16 with array-length=4
-   a[20] string of 20 characters (the last character is reserved for the null terminator)
+   R"LowFuelLevelWarning"C(0,3)  #This is not the same
+   R"LowFuelLevelWarning"C       # as this one
 
-Complex type signature: 
-~~~~~~~~~~~~~~~~~~~~~~~
+   
 
-Record types (struct-like elements) can be created by prepending your APX string with the '{' character and ending with '}'. Each record-element begins with a string
-containing the name (embedded in '"' characters) followed by a primitive type character (with optional array modifier).
-     
+Array Types
+^^^^^^^^^^^
+
+Arrays can be constructed by appending **[n]** to the right of any data type where **n** is represents the array length.
+
+In case of strings, using the *a* character the array length represents the maximum number of bytes the character can contain.
+For short strings, when not all bytes are used, the unused bytes will automatically be set to value zero, or NULL.
+
 Examples::
-   
-   {"e1"C"e2"S"e3"a[5]}
-     record with elements e1 (uint8), e2 (uint16) and e3 (string)
 
+  P"Name"a[40]:=""  #type: string, number of bytes: 40
+  R"U16Value"S[4]   #type: uint16, array-length: 4 (uses 8 bytes of memory)
+  P"U32Value"L[3]   #type: uint32, array-length: 3 (uses 12 bytes of memory)
+  
+When combining with min/max range you should place **(min,max)** to the left of **[n]**.
 
+Example::
 
+   P"SpeedSettings"C(0,3)[4] #array of 4 uint8 integers where each has min=0 and max=4.
 
+Record Types
+^^^^^^^^^^^^
+
+TBD
+
+Type References
+^^^^^^^^^^^^^^^
+
+TBD
+
+Port Attributes
+~~~~~~~~~~~~~~~
+
+Port attributes are an optional part of the port line. They are most often used to set the initial (or default) value of the port
+but can also be used to set queued port attributes as well as parameter attributes.
+
+Port attributes are always placed at the very end of the port line, after the data signature.
+Use a **:** character to mark the end of the data signature and start of the port attribute.
+The **:** character is not part of the actual attribute, it is merely used as a separator.
+
+Examples:: 
+
+   R"VehicleSpeed"S:=65535 #Init value: 65535
+   R"UnitSelection"C(0,3):=3  #Init value: 3
+
+Initial value
+^^^^^^^^^^^^^
+
+Initial value, init value or default value uses the **=** character as the first character to say "here starts the inital value".
+
+Remember:
+
+- The **:** character is the separator between port signature and port attribute
+- The **=** character act as the first character of the initial value.
+
+Examples::
+
+   =7                #init value: 7
+   =255              #init value: 255
+   ={255, 255, 255}  #Init value: {255, 255, 255}
