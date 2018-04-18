@@ -9,6 +9,7 @@ Contents:
    :maxdepth: 2
       
    apx_text
+   apx_logging
    remotefile
    apx_vm
    

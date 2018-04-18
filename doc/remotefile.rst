@@ -393,6 +393,8 @@ the start address of the file you want to close.
    +------------------------+---------+
    | RMF_CMD_FILE_CLOSE     |    11   |
    +------------------------+---------+
+   | RMF_CMD_LOGGING_ENABLE |   12    |
+   +------------------------+---------+
 
 Command data structures
 -----------------------
@@ -582,6 +584,24 @@ FileClose (length: 8 bytes)
    +--------+--------------+--------+--------------------+-----------------------------------------------------+
    |   4    |  address     |  U32LE |     0-2^30         |   Start-address of the memory mapped file to close  |
    +--------+--------------+--------+--------------------+-----------------------------------------------------+
+
+Logging Enable (Length: 5 bytes)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This is used to enable logging mode for the current session. It is up to the higher level protocol (like APX) to define what
+really should happen when logging mode is enabled.
+
+Reference: :doc:`apx_logging`
+
+.. rst-class:: table-numbers
+   
+   +--------+--------------+--------+-------------------+----------------------------------------------------+
+   | Offset |    Name      | Type   |  Value            |   Description                                      |
+   +========+==============+========+===================+====================================================+
+   |   0    |  cmdType     |  U32LE | RMF_CMD_FILE_OPEN |   Command type                                     |
+   +--------+--------------+--------+-------------------+----------------------------------------------------+
+   |   4    |  enable      |  U8    |  0-1              |   0=FALSE (DEFAULT), 1=TRUE                        |
+   +--------+--------------+--------+-------------------+----------------------------------------------------+
 
 RemoteFile greeting message
 ---------------------------
