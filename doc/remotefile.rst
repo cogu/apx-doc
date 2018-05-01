@@ -393,8 +393,10 @@ the start address of the file you want to close.
    +------------------------+---------+
    | RMF_CMD_FILE_CLOSE     |    11   |
    +------------------------+---------+
-   | RMF_CMD_LOGGING_ENABLE |   12    |
+   | RMF_CMD_LOGGING_ENABLE |   256   |
    +------------------------+---------+
+   
+User-defined commands start at range 256. Implementation and functionality is defined by upper layer protocols. 
 
 Command data structures
 -----------------------
@@ -589,7 +591,7 @@ Logging Enable (Length: 5 bytes)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This is used to enable logging mode for the current session. It is up to the higher level protocol (like APX) to define what
-really should happen when logging mode is enabled.
+should happen when logging mode is enabled.
 
 Reference: :doc:`apx_logging`
 
