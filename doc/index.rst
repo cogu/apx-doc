@@ -11,6 +11,7 @@ Contents:
    apx_text
    apx_logging
    remotefile
-   apx_vm
+   apx_vm1
+   apx_vm2
    
 

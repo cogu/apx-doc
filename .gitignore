@@ -15,5 +15,4 @@ py-apx/*.egg-info
 doc/_build/
 
 #komodoproject files
-py-apx/*.komodoproject
-py-apx/.komodotools/
+*.komodoproject
