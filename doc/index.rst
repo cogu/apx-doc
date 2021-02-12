@@ -3,15 +3,6 @@
 APX - Autosar Port eXchange
 ===========================
 
-Contents:
 
-.. toctree::
-   :maxdepth: 2
-      
-   apx_text
-   apx_logging
-   remotefile
-   apx_vm1
-   apx_vm2
-   
-
+.. note::
+  The APX documentation project has moved to `github-pages <https://cogu.github.io/apx/>`_
